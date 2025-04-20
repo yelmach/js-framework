@@ -1,63 +1,44 @@
-function createVDOM(tag, attrs = {}, ...children) {
-    const flattenedChildren = children.flat().filter(child =>
-        child !== null && child !== undefined && child !== false
-    );
-
-    const processedChildren = flattenedChildren.map(child => {
-        if (typeof child === 'string' || typeof child === 'number') {
-            return createTextNode(child);
-        }
-        return child;
-    })
-
-    return {
-        type: 'element',
-        tag,
-        attrs,
-        children: processedChildren,
-        key: attrs.key !== undefined ? attrs.key : null,
-    };
-}
-
-function createTextNode(text) {
-    return {
-        type: 'text',
-        text: String(text)
-    };
-}
-
-function createDomElement(vnode) {
-    if (vnode.type === 'text') {
-        return document.createTextNode(vnode.text);
+function createElement(vnode) {
+    if (typeof vnode === 'string' || typeof vnode === 'number') {
+        return document.createTextNode(vnode);
     }
 
     const element = document.createElement(vnode.tag);
-
-    for (const [key, value] of Object.entries(vnode.attrs)) {
-        if (key.startsWith('on')) {
-            element.addEventListener(key.slice(2).toLowerCase(), value);
-        } else {
-            element.setAttribute(key, value);
-        }
+    if (vnode.attrs) {
+        setAttributes(element, vnode.attrs);
     }
 
-    vnode.children.forEach(child => {
-        const childNode = createDomElement(child);
-        if (childNode) element.appendChild(childNode);
+    vnode.children?.forEach(child => {
+        if (child === null || child === undefined) return
+        element.appendChild(createElement(child));
     });
 
-    element._vnode = vnode;
-
     return element;
 }
 
-function mount(vnode, container) {
-    const element = createDomElement(vnode);
+function setAttributes(element, attrs) {
+    for (const [key, value] of Object.entries(attrs)) {
+        if (key.startsWith('on') && typeof value === 'function') {
+            element[key.slice(2).toLowerCase()] = value;
+        }
+        else if (key === 'class' || key.startsWith('data-')) {
+            element.setAttribute(key, value);
+        }
+        else if (key === 'style' && typeof value === 'object') {
+            Object.entries(value).forEach(([styleKey, styleValue]) => {
+                element.style[styleKey] = styleValue;
+            })
+        }
+        else {
+            element[key] = value
+        }
+    }
+}
+
+function render(vnode, container) {
+    container.innerHTML = '';
+    const element = createElement(vnode);
     container.appendChild(element);
-    return element;
 }
 
-function patch(oldVNode, newVNode, container) {
-
-}
-
+export { createElement, render }
