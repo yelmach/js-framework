@@ -3,7 +3,13 @@ function createElement(vnode) {
         return document.createTextNode(vnode);
     }
 
+    if (vnode && vnode._isComponent) {
+        const result = vnode.component(vnode.props || {});
+        return createElement(result);
+    }
+
     const element = document.createElement(vnode.tag);
+
     if (vnode.attrs) {
         setAttributes(element, vnode.attrs);
     }
@@ -19,7 +25,7 @@ function createElement(vnode) {
 function setAttributes(element, attrs) {
     for (const [key, value] of Object.entries(attrs)) {
         if (key.startsWith('on') && typeof value === 'function') {
-            element[key.slice(2).toLowerCase()] = value;
+            element[key.toLowerCase()] = value;
         }
         else if (key === 'class' || key.startsWith('data-')) {
             element.setAttribute(key, value);
@@ -30,14 +36,19 @@ function setAttributes(element, attrs) {
             })
         }
         else {
-            element[key] = value
+            try {
+                element[key] = value;
+            } catch (e) {
+                element.setAttribute(key, value);
+            }
         }
     }
 }
 
 function render(vnode, container) {
+    const vnodeToRender = typeof vnode === 'function' ? vnode() : vnode;
     container.innerHTML = '';
-    const element = createElement(vnode);
+    const element = createElement(vnodeToRender);
     container.appendChild(element);
 }
 
