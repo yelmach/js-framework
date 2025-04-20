@@ -1,82 +1,122 @@
-import { render } from '../src/index.js';
+import { render, component } from '../src/index.js';
 
-const list = [
-    { tag: 'li', children: ['Render virtual DOM to real DOM'] },
-    { tag: 'li', children: ['Support for nested elements'] },
-    { tag: 'li', children: ['CSS styling with objects'] },
-    { tag: 'li', children: ['Event handling'] }
-]
+// Button component
+function Button(props) {
+    const className = props.primary ? 'btn btn-primary' : 'btn btn-secondary';
 
-const vdom = {
-    tag: 'div',
-    attrs: { class: 'container' },
-    children: [
-        {
-            tag: 'h1',
-            attrs: { style: { color: '#333', marginBottom: "10px" } },
-            children: ['Hello, Mini-Framework!']
+    return {
+        tag: 'button',
+        attrs: {
+            class: className,
+            onClick: props.onClick || (() => { })
         },
-        {
-            tag: 'p',
-            attrs: {},
-            children: [
-                'This is a simple example using the ',
-                {
-                    tag: 'span',
-                    attrs: { class: 'highlight' },
-                    children: ['virtual DOM']
-                },
-                ' rendering system.'
-            ]
-        },
-        {
-            tag: 'div',
-            attrs: { class: 'card name' },
-            children: [
-                {
-                    tag: 'h3',
-                    attrs: { "data-id": 55 },
-                    children: ['Features:']
-                },
-                {
-                    tag: 'ul',
-                    attrs: {},
-                    children: [
-                        list
-                    ]
-                }
-            ]
-        },
-        {
-            tag: 'div',
-            attrs: {
-                style: {
-                    marginTop: "20px",
-                    padding: "15px",
-                    backgroundColor: '#eef6ff',
-                    borderRadius: "4px",
-                    border: '1px solid #cce5ff'
-                }
-            },
-            children: ['Styled content with object-based styles']
-        },
-        {
-            tag: 'button',
-            attrs: {
-                disabled: false,
-                style: { marginTop: "20px" },
-                onClick: () => alert('Button clicked!')
-            },
-            children: ['Click me']
-        },
-        {
-            tag: 'div',
-            attrs : {
-                style: { backgroundColor: 'red', },
-            },
-            children : ['test test']
-        }
-    ]
-};
+        children: [props.text || 'Button']
+    };
+}
 
-render(vdom, document.getElementById('app'));
+// Alert component
+function Alert(props) {
+    const className = `alert alert-${props.type || 'info'}`;
+
+    return {
+        tag: 'div',
+        attrs: {
+            class: className
+        },
+        children: [props.message]
+    };
+}
+
+// Card component
+function Card(props) {
+    return {
+        tag: 'div',
+        attrs: {
+            class: 'card'
+        },
+        children: [
+            {
+                tag: 'h3',
+                attrs: { class: 'card-title' },
+                children: [props.title]
+            },
+            {
+                tag: 'div',
+                attrs: { class: 'card-body' },
+                children: props.children || []
+            },
+            // Footer with button
+            props.buttonText ?
+                component(Button, {
+                    text: props.buttonText,
+                    primary: true,
+                    onClick: props.onButtonClick
+                }) :
+                null
+        ].filter(Boolean) // Filter out null values
+    };
+}
+
+function App() {
+    const handleButtonClick = () => {
+        alert('Button clicked!');
+    };
+
+    return {
+        tag: 'div',
+        attrs: { class: 'app' },
+        children: [
+            {
+                tag: 'h1',
+                attrs: {},
+                children: ['Component System Example']
+            },
+            component(Alert, {
+                type: 'info',
+                message: 'This example demonstrates a basic component system.'
+            }),
+            component(Card, {
+                title: 'Card with Button',
+                buttonText: 'Click Mee',
+                onButtonClick: handleButtonClick,
+                children: [
+                    'This card has a button component nested inside it.'
+                ]
+            }),
+            // Using Card component without button
+            component(Card, {
+                title: 'Card without Button',
+                children: [
+                    'This card does not have a button.'
+                ]
+            }),
+            {
+                tag: 'div',
+                attrs: { style: { marginTop: "20px" } },
+                children: [
+                    component(Button, {
+                        text: 'Primary Button',
+                        primary: true,
+                        onClick: () => alert('Primary button clicked!')
+                    }),
+                    component(Button, {
+                        text: 'Secondary Button',
+                        onClick: () => alert('Secondary button clicked!')
+                    }),
+                ]
+            },
+            // Demonstrating component composition
+            component(Card, {
+                title: 'Nested Components',
+                children: [
+                    component(Alert, {
+                        type: 'success',
+                        message: 'Components can be nested within each other!'
+                    })
+                ]
+            })
+        ]
+    };
+}
+
+render(App, document.getElementById('app'));

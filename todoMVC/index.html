@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini-Framework Basic Example</title>
+    <title>Mini-Framework Components Example</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -13,36 +13,70 @@
             padding: 20px;
         }
 
-        .container {
+        .app {
             border: 1px solid #ccc;
             padding: 20px;
             border-radius: 5px;
         }
 
-        .highlight {
-            color: #0066cc;
-            font-weight: bold;
+        .btn {
+            padding: 8px 16px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #0069d9;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
         }
 
         .card {
             border: 1px solid #ddd;
             border-radius: 4px;
             padding: 15px;
-            margin-top: 20px;
+            margin: 10px 0;
             background-color: #f9f9f9;
         }
 
-        button {
-            padding: 8px 16px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
+        .card-title {
+            font-size: 18px;
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #333;
         }
 
-        button:hover {
-            background-color: #45a049;
+        .alert {
+            padding: 12px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+
+        .alert-success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .alert-info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
         }
     </style>
 </head>
