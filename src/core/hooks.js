@@ -1,7 +1,16 @@
 import { rerender } from "./component.js";
 
+// State management
 const states = [];
 let stateIndex = 0;
+
+// Effect management
+const effectDependencies = [];
+const effectCleanups = [];
+let effectIndex = 0;
+
+let isFirstRender = true;
+const pendingEffects = [];
 
 function useState(initialValue) {
     const currentIndex = stateIndex;
@@ -19,31 +28,77 @@ function useState(initialValue) {
     }
 
     stateIndex++;
-
     return [states[currentIndex], setState];
 }
 
-const effects = [];
-let effectIndex = 0;
-
 function useEffect(callback, dependencies) {
-    const oldDependencies = effects[effectIndex];
-    let hasChanged = true;
+    const currentIndex = effectIndex;
+    const prevDependencies = effectDependencies[currentIndex];
 
-    if (oldDependencies) {
-        hasChanged = dependencies.some((dep, i) => !Object.is(dep, oldDependencies[i]));
+    let shouldRunEffect = false;
+
+    if (!dependencies) {
+        shouldRunEffect = true;
+    } else if (!prevDependencies) {
+        shouldRunEffect = true;
+    } else if (dependencies.length !== prevDependencies.length) {
+        shouldRunEffect = true;
+    } else {
+        shouldRunEffect = dependencies.some((dep, i) => !Object.is(dep, prevDependencies[i]));
     }
 
-    if (hasChanged) {
-        callback();
+    if (dependencies && dependencies.length === 0) {
+        shouldRunEffect = prevDependencies === undefined;
     }
 
-    effects[effectIndex] = dependencies;
+    if (shouldRunEffect) {
+        pendingEffects.push(() => {
+            if (typeof effectCleanups[currentIndex] === 'function') {
+                effectCleanups[currentIndex]();
+            }
+
+            const cleanup = callback();
+            effectCleanups[currentIndex] = typeof cleanup === 'function' ? cleanup : undefined;
+        });
+    }
+
+    effectDependencies[currentIndex] = dependencies;
     effectIndex++;
 }
 
 function resetHookIndex() {
     stateIndex = 0;
+    effectIndex = 0;
 }
 
-export { useState, resetHookIndex, useEffect };
+function runEffects() {
+    pendingEffects.forEach(effect => effect());
+    pendingEffects.length = 0;
+
+    isFirstRender = false;
+}
+
+function cleanupEffects() {
+    effectCleanups.forEach(cleanup => {
+        if (typeof cleanup === 'function') {
+            cleanup();
+        }
+    });
+
+    states.length = 0;
+    effectCleanups.length = 0;
+    effectDependencies.length = 0;
+    pendingEffects.length = 0;
+
+    resetHookIndex();
+
+    isFirstRender = true;
+}
+
+export {
+    useState,
+    useEffect,
+    resetHookIndex,
+    runEffects,
+    cleanupEffects
+};

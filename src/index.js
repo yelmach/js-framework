@@ -1,4 +1,10 @@
-import { createElement, render } from './core/component.js';
-import { useState } from './core/hooks.js';
+import { createElement, render, unmount } from './core/component.js';
+import { useState, useEffect } from './core/hooks.js';
 
-export { createElement, render, useState };
+export {
+    createElement,
+    render,
+    unmount,
+    useState,
+    useEffect
+};

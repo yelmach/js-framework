@@ -1,4 +1,4 @@
-import { resetHookIndex } from './hooks.js';
+import { resetHookIndex, runEffects, cleanupEffects } from './hooks.js';
 
 function createElement(vnode) {
     if (typeof vnode === 'string' || typeof vnode === 'number') {
@@ -53,21 +53,42 @@ let rootContainer = null;
 function render(rootComponent, container) {
     rootComponentFn = rootComponent;
     rootContainer = container;
+
+    resetHookIndex();
+
     const element = createElement(rootComponentFn());
+    container.innerHTML = '';
     container.appendChild(element);
+
+    setTimeout(runEffects, 0);
 }
 
 function rerender() {
-    const newElement = createElement(rootComponentFn());
-    const oldElement = rootContainer.firstChild;
+    if (!rootComponentFn || !rootContainer) return;
 
     resetHookIndex();
+
+    const newElement = createElement(rootComponentFn());
+    const oldElement = rootContainer.firstChild;
 
     if (oldElement && newElement) {
         rootContainer.replaceChild(newElement, oldElement);
     } else if (newElement) {
         rootContainer.appendChild(newElement);
     }
+
+    setTimeout(runEffects, 0);
 }
 
-export { createElement, render, rerender }
+function unmount() {
+    if (rootContainer) {
+        rootContainer.innerHTML = '';
+
+        cleanupEffects();
+
+        rootComponentFn = null;
+        rootContainer = null;
+    }
+}
+
+export { createElement, render, rerender, unmount }
