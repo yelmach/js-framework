@@ -1,3 +1,5 @@
+import { resetHookIndex } from './hooks.js';
+
 function createElement(vnode) {
     if (typeof vnode === 'string' || typeof vnode === 'number') {
         return document.createTextNode(vnode);
@@ -45,10 +47,27 @@ function setAttributes(element, attrs) {
     }
 }
 
+let rootComponentFn = null;
+let rootContainer = null;
+
 function render(rootComponent, container) {
-    container.innerHTML = '';
-    const element = createElement(rootComponent());
+    rootComponentFn = rootComponent;
+    rootContainer = container;
+    const element = createElement(rootComponentFn());
     container.appendChild(element);
 }
 
-export { createElement, render }
+function rerender() {
+    const newElement = createElement(rootComponentFn());
+    const oldElement = rootContainer.firstChild;
+
+    resetHookIndex();
+
+    if (oldElement && newElement) {
+        rootContainer.replaceChild(newElement, oldElement);
+    } else if (newElement) {
+        rootContainer.appendChild(newElement);
+    }
+}
+
+export { createElement, render, rerender }
