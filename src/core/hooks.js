@@ -23,8 +23,27 @@ function useState(initialValue) {
     return [states[currentIndex], setState];
 }
 
+const effects = [];
+let effectIndex = 0;
+
+function useEffect(callback, dependencies) {
+    const oldDependencies = effects[effectIndex];
+    let hasChanged = true;
+
+    if (oldDependencies) {
+        hasChanged = dependencies.some((dep, i) => !Object.is(dep, oldDependencies[i]));
+    }
+
+    if (hasChanged) {
+        callback();
+    }
+
+    effects[effectIndex] = dependencies;
+    effectIndex++;
+}
+
 function resetHookIndex() {
     stateIndex = 0;
 }
 
-export { useState, resetHookIndex };
+export { useState, resetHookIndex, useEffect };
