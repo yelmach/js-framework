@@ -9,6 +9,10 @@ const effectDependencies = [];
 const effectCleanups = [];
 let effectIndex = 0;
 
+// Ref management
+const refs = [];
+let refIndex = 0;
+
 let isFirstRender = true;
 const pendingEffects = [];
 
@@ -66,9 +70,22 @@ function useEffect(callback, dependencies) {
     effectIndex++;
 }
 
+// useRef hook implementation
+function useRef(initialValue) {
+    const currentIndex = refIndex;
+
+    if (refs[currentIndex] === undefined) {
+        refs[currentIndex] = { current: initialValue };
+    }
+
+    refIndex++;
+    return refs[currentIndex];
+}
+
 function resetHookIndex() {
     stateIndex = 0;
     effectIndex = 0;
+    refIndex = 0;
 }
 
 function runEffects() {
@@ -88,6 +105,7 @@ function cleanupEffects() {
     states.length = 0;
     effectCleanups.length = 0;
     effectDependencies.length = 0;
+    refs.length = 0;
     pendingEffects.length = 0;
 
     resetHookIndex();
@@ -98,6 +116,7 @@ function cleanupEffects() {
 export {
     useState,
     useEffect,
+    useRef,
     resetHookIndex,
     runEffects,
     cleanupEffects
