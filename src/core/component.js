@@ -21,6 +21,8 @@ function createElement(vnode) {
         element.appendChild(createElement(child));
     });
 
+    element._vnode = vnode;
+
     return element;
 }
 
@@ -46,6 +48,54 @@ function setAttributes(element, attrs) {
         }
     }
 }
+
+function removeAttributes(element, oldAttrs, newAttrs) {
+    for (const [key, value] of Object.entries(oldAttrs)) {
+        if (!(key in newAttrs)) {
+            if (key.startsWith('on')) {
+                element[key.toLowerCase()] = null;
+            } else if (key === 'style') {
+                element.removeAttribute('style');
+            } else {
+                element.removeAttribute(key);
+            }
+        }
+    }
+}
+
+function updateAttributes(element, oldAttrs, newAttrs) {
+    // Remove attributes that are no longer present
+    removeAttributes(element, oldAttrs || {}, newAttrs || {});
+
+    // Add or update attributes
+    for (const [key, value] of Object.entries(newAttrs || {})) {
+        const oldValue = oldAttrs?.[key];
+
+        // Skip if the attribute value hasn't changed
+        if (oldValue === value) continue;
+
+        // Special handling for style objects
+        if (key === 'style' && typeof value === 'object' && typeof oldValue === 'object') {
+            // Update only changed styles
+            for (const [styleKey, styleValue] of Object.entries(value)) {
+                if (oldValue[styleKey] !== styleValue) {
+                    element.style[styleKey] = styleValue;
+                }
+            }
+
+            // Remove styles that are no longer present
+            for (const styleKey in oldValue) {
+                if (!(styleKey in value)) {
+                    element.style[styleKey] = '';
+                }
+            }
+        } else {
+            // For other attributes, use setAttributes function
+            setAttributes(element, { [key]: value });
+        }
+    }
+}
+
 
 let rootComponentFn = null;
 let rootContainer = null;
