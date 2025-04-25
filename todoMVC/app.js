@@ -1,16 +1,17 @@
-import { render, useState, useEffect } from '../src/index.js';
+import { render, useState } from '../src/index.js';
 
-// TodoItem component with key support
-function TodoItem(props) {
-    console.log("Rendering TodoItem:", props.id, props.text);
+// KeyedItem component
+function KeyedItem(props) {
+    console.log("Rendering KeyedItem:", props.id);
     return {
         tag: 'div',
         attrs: {
             class: 'card',
-            key: `todo-${props.id}`,
+            key: `item-${props.id}`,
             style: {
                 marginBottom: '8px',
-                padding: '10px',
+                padding: '15px',
+                backgroundColor: props.color || '#f0f0f0',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center'
@@ -18,217 +19,178 @@ function TodoItem(props) {
         },
         children: [
             {
-                tag: 'span',
+                tag: 'input',
                 attrs: {
+                    type: 'text',
+                    value: props.text,
+                    placeholder: 'Type here...',
                     style: {
-                        textDecoration: props.completed ? 'line-through' : 'none',
-                        color: props.completed ? '#888' : '#000'
-                    }
+                        padding: '5px',
+                        marginRight: '10px',
+                        border: '1px solid #ccc',
+                        borderRadius: '4px'
+                    },
+                    // This will help demonstrate that element state is preserved
+                    onInput: (e) => console.log(`Input from item ${props.id}: ${e.target.value}`)
                 },
-                children: [props.text]
+                children: []
             },
             {
                 tag: 'div',
                 attrs: {},
+                children: [`Item ${props.id}`]
+            }
+        ]
+    };
+}
+
+// Main test component
+function KeyedListTest() {
+    console.log("Rendering KeyedListTest");
+
+    const [items, setItems] = useState([
+        { id: 1, text: 'First Item', color: '#ffdddd' },
+        { id: 2, text: 'Second Item', color: '#ddffdd' },
+        { id: 3, text: 'Third Item', color: '#ddddff' }
+    ]);
+
+    // Reverse the order of items
+    const reverseItems = () => {
+        console.log("Reversing items");
+        setItems([...items].reverse());
+    };
+
+    // Move the first item to the end
+    const moveFirstToEnd = () => {
+        console.log("Moving first item to end");
+        const newItems = [...items];
+        const first = newItems.shift();
+        newItems.push(first);
+        setItems(newItems);
+    };
+
+    // Shuffle the items randomly
+    const shuffleItems = () => {
+        console.log("Shuffling items");
+        const newItems = [...items];
+        for (let i = newItems.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [newItems[i], newItems[j]] = [newItems[j], newItems[i]];
+        }
+        setItems(newItems);
+    };
+
+    // Add a new item
+    const addItem = () => {
+        console.log("Adding new item");
+        const newId = items.length > 0
+            ? Math.max(...items.map(item => item.id)) + 1
+            : 1;
+
+        const colors = ['#ffdddd', '#ddffdd', '#ddddff', '#ffffdd', '#ffddff', '#ddffff'];
+        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+
+        setItems([...items, {
+            id: newId,
+            text: `New Item ${newId}`,
+            color: randomColor
+        }]);
+    };
+
+    // Remove the last item
+    const removeLastItem = () => {
+        if (items.length > 0) {
+            console.log("Removing last item");
+            const newItems = [...items];
+            newItems.pop();
+            setItems(newItems);
+        }
+    };
+
+    return {
+        tag: 'div',
+        attrs: { class: 'app', style: { padding: '20px' } },
+        children: [
+            {
+                tag: 'h2',
+                attrs: {},
+                children: ['Keyed Items Test']
+            },
+            {
+                tag: 'div',
+                attrs: { class: 'alert alert-info' },
+                children: [
+                    'This example demonstrates proper diffing with keyed elements.',
+                    {
+                        tag: 'br',
+                        attrs: {},
+                        children: []
+                    },
+                    'Type in the text inputs, then use the buttons to reorder items. Your input should stay with each item.'
+                ]
+            },
+            {
+                tag: 'div',
+                attrs: { style: { marginBottom: '20px', marginTop: '20px' } },
                 children: [
                     {
                         tag: 'button',
                         attrs: {
-                            key: `complete-btn-${props.id}`,
-                            class: props.completed ? 'btn btn-secondary' : 'btn btn-primary',
-                            onClick: () => props.onToggle(props.id),
-                            style: { marginRight: '5px' }
+                            class: 'btn btn-primary',
+                            onClick: reverseItems,
+                            style: { marginRight: '10px' }
                         },
-                        children: [props.completed ? 'Undo' : 'Complete']
+                        children: ['Reverse Items']
                     },
                     {
                         tag: 'button',
                         attrs: {
-                            key: `delete-btn-${props.id}`,
-                            class: 'btn btn-secondary',
-                            onClick: () => props.onDelete(props.id)
+                            class: 'btn btn-primary',
+                            onClick: moveFirstToEnd,
+                            style: { marginRight: '10px' }
                         },
-                        children: ['Delete']
-                    }
-                ]
-            }
-        ]
-    };
-}
-
-// TodoList component with proper keys
-function TodoList() {
-    console.log("Rendering TodoList");
-
-    const [todos, setTodos] = useState([
-        { id: 1, text: 'Learn the framework', completed: true },
-        { id: 2, text: 'Build a todo app', completed: false },
-        { id: 3, text: 'Add state management', completed: false }
-    ]);
-
-    const [newTodo, setNewTodo] = useState('');
-
-    // Add a new todo
-    const addTodo = () => {
-        console.log("Add todo triggered with value:", newTodo);
-        if (newTodo.trim() === '') {
-            console.log("Empty todo, not adding");
-            return;
-        }
-
-        const newId = todos.length > 0
-            ? Math.max(...todos.map(todo => todo.id)) + 1
-            : 1;
-
-        console.log("Current todos:", todos);
-        console.log("Adding new todo with ID:", newId);
-
-        setTodos([...todos, { id: newId, text: newTodo, completed: false }]);
-        console.log("Todos updated, now setting newTodo to empty");
-        setNewTodo('');
-    };
-
-    // Toggle todo completion status
-    const toggleTodo = (id) => {
-        console.log("Toggling todo:", id);
-        setTodos(todos.map(todo =>
-            todo.id === id ? { ...todo, completed: !todo.completed } : todo
-        ));
-    };
-
-    // Delete a todo
-    const deleteTodo = (id) => {
-        console.log("Deleting todo:", id);
-        setTodos(todos.filter(todo => todo.id !== id));
-    };
-
-    // Handle input change
-    const handleInputChange = (e) => {
-        console.log("Input value changed:", e.target.value);
-        setNewTodo(e.target.value);
-    };
-
-    // Handle Enter key press
-    const handleKeyPress = (e) => {
-        if (e.key === 'Enter') {
-            console.log("Enter key pressed, adding todo");
-            addTodo();
-        }
-    };
-
-    // Monitor state changes
-    useEffect(() => {
-        console.log("Todos state changed:", todos);
-    }, [todos]);
-
-    useEffect(() => {
-        console.log("newTodo state changed:", newTodo);
-    }, [newTodo]);
-
-    return {
-        tag: 'div',
-        attrs: { class: 'card', key: 'todo-list-container' },
-        children: [
-            {
-                tag: 'h3',
-                attrs: { class: 'card-title', key: 'todo-list-title' },
-                children: ['Todo List']
-            },
-            {
-                tag: 'div',
-                attrs: { style: { marginBottom: '15px' }, key: 'todo-input-container' },
-                children: [
+                        children: ['Move First to End']
+                    },
                     {
-                        tag: 'div',
-                        attrs: { style: { display: 'flex', gap: '10px' }, key: 'todo-input-row' },
-                        children: [
-                            {
-                                tag: 'input',
-                                attrs: {
-                                    key: 'todo-input',
-                                    type: 'text',
-                                    value: newTodo,
-                                    onInput: handleInputChange,
-                                    onKeyPress: handleKeyPress,
-                                    placeholder: 'Add a new todo',
-                                    style: {
-                                        flex: 1,
-                                        padding: '8px',
-                                        borderRadius: '4px',
-                                        border: '1px solid #ccc'
-                                    }
-                                },
-                                children: []
-                            },
-                            {
-                                tag: 'button',
-                                attrs: {
-                                    key: 'add-todo-button',
-                                    class: 'btn btn-primary',
-                                    onClick: addTodo
-                                },
-                                children: ['Add Todo']
-                            }
-                        ]
-                    }
-                ]
-            },
-            {
-                tag: 'div',
-                attrs: { key: 'todo-items-container' },
-                children: todos.length === 0
-                    ? [{
-                        tag: 'div',
-                        attrs: { class: 'alert alert-info', key: 'no-todos-message' },
-                        children: ['No todos yet! Add one to get started.']
-                    }]
-                    : todos.map(todo => ({
-                        component: TodoItem,
-                        props: {
-                            id: todo.id,
-                            text: todo.text,
-                            completed: todo.completed,
-                            onToggle: toggleTodo,
-                            onDelete: deleteTodo,
-                            key: `todo-item-${todo.id}`
-                        }
-                    }))
-            },
-            {
-                tag: 'div',
-                attrs: { style: { marginTop: '15px' }, key: 'todo-summary' },
-                children: [
+                        tag: 'button',
+                        attrs: {
+                            class: 'btn btn-primary',
+                            onClick: shuffleItems,
+                            style: { marginRight: '10px' }
+                        },
+                        children: ['Shuffle Items']
+                    },
                     {
-                        tag: 'p',
-                        attrs: { key: 'todo-count' },
-                        children: [`${todos.filter(t => t.completed).length} of ${todos.length} tasks completed`]
+                        tag: 'button',
+                        attrs: {
+                            class: 'btn btn-primary',
+                            onClick: addItem,
+                            style: { marginRight: '10px' }
+                        },
+                        children: ['Add Item']
+                    },
+                    {
+                        tag: 'button',
+                        attrs: {
+                            class: 'btn btn-secondary',
+                            onClick: removeLastItem
+                        },
+                        children: ['Remove Last Item']
                     }
                 ]
-            }
-        ]
-    };
-}
-
-// App component
-function App() {
-    console.log("Rendering App");
-    return {
-        tag: 'div',
-        attrs: { class: 'app', key: 'app-root' },
-        children: [
-            {
-                tag: 'h1',
-                attrs: { key: 'app-title' },
-                children: ['Todo List Example']
             },
             {
                 tag: 'div',
-                attrs: { class: 'alert alert-info', key: 'app-info' },
-                children: ['This example demonstrates reconciliation with debug logs.']
-            },
-            {
-                component: TodoList,
-                props: { key: 'todo-list-component' }
+                attrs: { id: 'items-container' },
+                children: items.map(item => ({
+                    component: KeyedItem,
+                    props: {
+                        id: item.id,
+                        text: item.text,
+                        color: item.color,
+                        key: `keyed-item-${item.id}`
+                    }
+                }))
             }
         ]
     };
@@ -236,6 +198,6 @@ function App() {
 
 // Render the app
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOM loaded, rendering app");
-    render(App, document.getElementById('app'));
+    console.log("DOM loaded, rendering KeyedListTest");
+    render(KeyedListTest, document.getElementById('app'));
 });
