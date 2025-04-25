@@ -1,3 +1,5 @@
+import { createElement } from "./vdom.js";
+
 function diff(parentDom, oldVNode, newVNode, index = 0) {
     if (!newVNode && !oldVNode) return;
 
@@ -33,31 +35,6 @@ function diff(parentDom, oldVNode, newVNode, index = 0) {
         return;
     }
 
-    const oldKey = oldNode?.attrs?.key;
-    const newKey = newNode?.attrs?.key;
-
-    if (oldKey && newKey && oldKey !== newKey) {
-        const keyedNode = findDOMNodeByKey(parentDom, newKey);
-        if (keyedNode) {
-            // Move the existing node to the current position
-            parentDom.insertBefore(keyedNode.node, domNode);
-
-            updateAttributes(keyedNode.node, oldNode.attrs, newNode.attrs);
-
-            const oldChildren = oldNode.children || [];
-            const newChildren = newNode.children || [];
-
-            const maxLength = Math.max(oldChildren.length, newChildren.length);
-            for (let i = 0; i < maxLength; i++) {
-                diff(keyedNode.node, oldChildren[i], newChildren[i], i);
-            }
-
-            // Remove the original node
-            parentDom.removeChild(domNode);
-            return;
-        }
-    }
-
     // Case 4: Different node types (replace)
     if (!isSameNodeType(oldNode, newNode) || !hasSameKey(oldNode, newNode)) {
         const newDomNode = createElement(newNode);
@@ -68,100 +45,112 @@ function diff(parentDom, oldVNode, newVNode, index = 0) {
     // Case 5: Same element type - update attributes and children
     updateAttributes(domNode, oldNode.attrs, newNode.attrs);
 
+    // Handle children
     const oldChildren = oldNode.children || [];
     const newChildren = newNode.children || [];
 
-    // If both arrays are empty, nothing to do
+    // Use improved diffChildren function
+    diffChildren(domNode, oldChildren, newChildren);
+}
+
+function diffChildren(parentDom, oldChildren, newChildren) {
+    // Special cases: empty arrays
     if (oldChildren.length === 0 && newChildren.length === 0) {
         return;
     }
 
-    // If no new childern, clear all children
     if (newChildren.length === 0) {
-        domNode.innerHTML = '';
+        parentDom.innerHTML = '';
         return;
     }
 
-    // If no old children, we're adding all new children
     if (oldChildren.length === 0) {
         newChildren.forEach(child => {
-            domNode.appendChild(createElement(child));
+            parentDom.appendChild(createElement(child));
         });
         return;
     }
 
-    // First, create a map of keyed old children
-    const keyedOldChildren = new Map();
-    oldChildren.forEach((child, i) => {
-        const key = child && child.attrs && child.attrs.key;
-        if (key !== undefined) {
-            keyedOldChildren.set(key, { vnode: child, index: i, domIndex: i });
+    // Check if we need to handle keys
+    const hasKeys = oldChildren.some(c => c?.attrs?.key) ||
+        newChildren.some(c => c?.attrs?.key);
+
+    // Simple case: no keys, diff by index
+    if (!hasKeys) {
+        for (let i = 0; i < Math.max(oldChildren.length, newChildren.length); i++) {
+            diff(parentDom, oldChildren[i], newChildren[i], i);
         }
-    });
+        return;
+    }
 
-    // Track which old nodes have been used
-    const usedOldNodes = new Set();
+    // Create a map of keyed old children
+    const oldKeyedMap = new Map();
+    const oldChildDomNodes = Array.from(parentDom.childNodes);
 
-    // Current position in the DOM
+    for (let i = 0; i < oldChildren.length; i++) {
+        const key = oldChildren[i]?.attrs?.key;
+        if (key !== undefined && i < oldChildDomNodes.length) {
+            oldKeyedMap.set(key, {
+                vnode: oldChildren[i],
+                domNode: oldChildDomNodes[i],
+                index: i
+            });
+        }
+    }
+
+    // Track used DOM nodes to determine which ones to remove later
+    const usedNodes = new Set();
+
+    // Process new children in the order they are defined
     let currentIndex = 0;
 
-    // Process each new child
     for (let i = 0; i < newChildren.length; i++) {
         const newChild = newChildren[i];
-        const newKey = newChild && newChild.attrs && newChild.attrs.key;
+        const key = newChild?.attrs?.key;
 
-        // Find the corresponding old node
-        let oldChildInfo = null;
-        if (newKey !== undefined) {
-            oldChildInfo = keyedOldChildren.get(newKey);
-        }
+        // If this child has a key and we have a matching old node
+        if (key !== undefined && oldKeyedMap.has(key)) {
+            const { vnode: oldChild, domNode: oldDomNode } = oldKeyedMap.get(key);
 
-        // If we found a matching old node
-        if (oldChildInfo && !usedOldNodes.has(oldChildInfo.index)) {
-            // Mark this old node as used
-            usedOldNodes.add(oldChildInfo.index);
+            // Mark this node as used
+            usedNodes.add(oldDomNode);
 
-            // Get the old vnode
-            const oldChild = oldChildInfo.vnode;
+            // Update the node
+            updateAttributes(oldDomNode, oldChild.attrs, newChild.attrs);
 
-            // If DOM indices don't match, we need to move the node
-            if (oldChildInfo.domIndex !== currentIndex) {
-                // Find the actual DOM node
-                const oldDomNode = domNode.childNodes[oldChildInfo.domIndex];
-                // Move it to the current position
-                if (oldDomNode && currentIndex < domNode.childNodes.length) {
-                    domNode.insertBefore(oldDomNode, domNode.childNodes[currentIndex]);
-                } else if (oldDomNode) {
-                    domNode.appendChild(oldDomNode);
-                }
+            // Recursively update children
+            diffChildren(oldDomNode, oldChild.children || [], newChild.children || []);
+
+            // Move this node to the current position if needed
+            const currentDomNode = parentDom.childNodes[currentIndex];
+            if (currentDomNode !== oldDomNode) {
+                parentDom.insertBefore(oldDomNode, currentDomNode || null);
             }
+        }
+        // No key or no matching old node, create a new one
+        else {
+            const newDomNode = createElement(newChild);
 
-            // Recursively diff this node
-            diff(domNode, oldChild, newChild, currentIndex);
-        } else {
-            // No matching old node, insert a new one
-            if (currentIndex < domNode.childNodes.length) {
-                domNode.insertBefore(createElement(newChild), domNode.childNodes[currentIndex]);
+            // Insert at the current position
+            if (currentIndex < parentDom.childNodes.length) {
+                parentDom.insertBefore(newDomNode, parentDom.childNodes[currentIndex]);
             } else {
-                domNode.appendChild(createElement(newChild));
+                parentDom.appendChild(newDomNode);
             }
         }
 
         currentIndex++;
     }
 
-    // Remove any unused old nodes
-    for (let i = 0; i < oldChildren.length; i++) {
-        if (!usedOldNodes.has(i)) {
-            const index = Array.from(usedOldNodes).filter(idx => idx < i).length;
-            const nodeIndex = i - index;
-            if (domNode.childNodes[nodeIndex]) {
-                domNode.removeChild(domNode.childNodes[nodeIndex]);
-            }
+    // Remove any unused DOM nodes
+    for (const domNode of oldChildDomNodes) {
+        if (!usedNodes.has(domNode) && domNode.parentNode === parentDom) {
+            parentDom.removeChild(domNode);
         }
     }
 }
 
+// The rest of the helper functions remain unchanged
 function resolveComponentNode(vnode) {
     if (!vnode) return null;
 
@@ -173,20 +162,6 @@ function resolveComponentNode(vnode) {
 
 function isTextNode(node) {
     return typeof node === 'string' || typeof node === 'number';
-}
-
-// Find a DOM node with the given key within a parent
-function findDOMNodeByKey(parent, key, startIndex = 0) {
-    if (!parent || !key) return null;
-
-    for (let i = startIndex; i < parent.childNodes.length; i++) {
-        const child = parent.childNodes[i];
-        if (child.nodeType === 1 && child.getAttribute('data-key') === key.toString()) {
-            return { node: child, index: i };
-        }
-    }
-
-    return null;
 }
 
 // Helper function to check if two nodes are of the same type
