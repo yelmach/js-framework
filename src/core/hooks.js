@@ -1,4 +1,4 @@
-import { rerender } from "./component.js";
+import { rerender } from "./vdom.js";
 
 // State management
 const states = [];
@@ -13,14 +13,20 @@ let effectIndex = 0;
 const refs = [];
 let refIndex = 0;
 
-let isFirstRender = true;
+// Effect queue for asynchronous execution
 const pendingEffects = [];
+let isFirstRender = true;
 
 function useState(initialValue) {
     const currentIndex = stateIndex;
-    states[currentIndex] = states[currentIndex] !== undefined ? states[currentIndex] : initialValue;
 
-    function setState(newValue) {
+    if (states[currentIndex] === undefined) {
+        states[currentIndex] = initialValue;
+    }
+
+    const currentState = states[currentIndex];
+
+    const setState = (newValue) => {
         const updatedValue = typeof newValue === 'function'
             ? newValue(states[currentIndex])
             : newValue;
@@ -29,10 +35,10 @@ function useState(initialValue) {
             states[currentIndex] = updatedValue;
             rerender();
         }
-    }
+    };
 
     stateIndex++;
-    return [states[currentIndex], setState];
+    return [currentState, setState];
 }
 
 function useEffect(callback, dependencies) {
@@ -41,39 +47,49 @@ function useEffect(callback, dependencies) {
 
     let shouldRunEffect = false;
 
-    if (!dependencies) {
+    // Always run if no dependencies array is provided (runs on every render)
+    if (dependencies === undefined) {
         shouldRunEffect = true;
-    } else if (!prevDependencies) {
+    }
+    // First render, always run
+    else if (prevDependencies === undefined) {
         shouldRunEffect = true;
-    } else if (dependencies.length !== prevDependencies.length) {
+    }
+    // Empty dependencies array means run once (on mount)
+    else if (dependencies.length === 0 && prevDependencies.length === 0) {
+        shouldRunEffect = isFirstRender || prevDependencies === undefined;
+    }
+    // Different dependency array length
+    else if (dependencies.length !== prevDependencies.length) {
         shouldRunEffect = true;
     } else {
         shouldRunEffect = dependencies.some((dep, i) => !Object.is(dep, prevDependencies[i]));
     }
 
-    if (dependencies && dependencies.length === 0) {
-        shouldRunEffect = prevDependencies === undefined;
-    }
-
     if (shouldRunEffect) {
         pendingEffects.push(() => {
+            // Clean up previous effect if exists
             if (typeof effectCleanups[currentIndex] === 'function') {
                 effectCleanups[currentIndex]();
             }
 
+            // Run the effect and store any cleanup function
             const cleanup = callback();
+
+            // Store cleanup function for next time
             effectCleanups[currentIndex] = typeof cleanup === 'function' ? cleanup : undefined;
         });
     }
 
+    // Store dependencies for next comparison
     effectDependencies[currentIndex] = dependencies;
     effectIndex++;
 }
 
-// useRef hook implementation
 function useRef(initialValue) {
     const currentIndex = refIndex;
 
+    // Create ref object if it doesn't exist
     if (refs[currentIndex] === undefined) {
         refs[currentIndex] = { current: initialValue };
     }
@@ -82,6 +98,7 @@ function useRef(initialValue) {
     return refs[currentIndex];
 }
 
+// Reset hook indices for next render
 function resetHookIndex() {
     stateIndex = 0;
     effectIndex = 0;
@@ -89,12 +106,17 @@ function resetHookIndex() {
 }
 
 function runEffects() {
-    pendingEffects.forEach(effect => effect());
+    // Make a copy to avoid issues if new effects are added during execution
+    const effectsToRun = [...pendingEffects];
     pendingEffects.length = 0;
+
+    // Run all effects
+    effectsToRun.forEach(effect => effect());
 
     isFirstRender = false;
 }
 
+// Clean up all effects and state
 function cleanupEffects() {
     effectCleanups.forEach(cleanup => {
         if (typeof cleanup === 'function') {
@@ -102,6 +124,7 @@ function cleanupEffects() {
         }
     });
 
+    // Reset all state
     states.length = 0;
     effectCleanups.length = 0;
     effectDependencies.length = 0;
@@ -109,7 +132,6 @@ function cleanupEffects() {
     pendingEffects.length = 0;
 
     resetHookIndex();
-
     isFirstRender = true;
 }
 
