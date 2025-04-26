@@ -243,9 +243,21 @@ function updateAttributes(element, oldAttrs, newAttrs) {
             element.setAttribute(attr, value);
         }
         else if (attr === 'style' && typeof value === 'object') {
-            element.style = '';
-            Object.entries(value).forEach(([styleKey, styleValue]) => {
-                element.style[styleKey] = styleValue;
+            const oldStyle = oldAttrsMap.style || {};
+            const newStyle = value;
+
+            // Remove style properties that no longer exist
+            Object.keys(oldStyle).forEach(styleProp => {
+                if (newStyle[styleProp] === undefined) {
+                    element.style[styleProp] = '';
+                }
+            });
+
+            // Set new or changed style properties
+            Object.entries(newStyle).forEach(([styleProp, styleValue]) => {
+                if (oldStyle[styleProp] !== styleValue) {
+                    element.style[styleProp] = styleValue;
+                }
             });
         }
         else {
