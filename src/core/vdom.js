@@ -64,6 +64,17 @@ function createElement(vnode) {
         return createElement(result);
     }
 
+    if (vnode.tag === 'fragment') {
+        const fragmentContainer = document.createDocumentFragment();
+        if (vnode.children) {
+            vnode.children.forEach(child => {
+                if (child === null || child === undefined) return;
+                fragmentContainer.appendChild(createElement(child));
+            });
+        }
+        return fragmentContainer;
+    }
+
     const element = document.createElement(vnode.tag);
 
     // Set element key for tracking (stored as a data attribute)

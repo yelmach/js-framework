@@ -15,6 +15,42 @@ function diff(parentDom, oldVNode, newVNode, index = 0) {
     oldVNode = oldVNode ? resolveComponentNode(oldVNode) : null;
     newVNode = resolveComponentNode(newVNode);
 
+    // Fragment diffing
+    if (oldVNode?.tag === 'fragment' && newVNode?.tag === 'fragment') {
+        diffChildren(parentDom, oldVNode.children || [], newVNode.children || [], index);
+        return;
+    }
+
+    // Element -> Fragment
+    if (newVNode?.tag === 'fragment') {
+        // Clear existing node if any
+        if (oldVNode) {
+            parentDom.removeChild(parentDom.childNodes[index]);
+        }
+
+        // Insert all fragment children
+        let currentIndex = index;
+        (newVNode.children || []).forEach(child => {
+            diff(parentDom, null, child, currentIndex++);
+        });
+        return;
+    }
+
+    // Fragment -> Element
+    if (oldVNode?.tag === 'fragment') {
+        // Remove all old fragment children
+        const oldChildCount = (oldVNode.children || []).length;
+        for (let i = 0; i < oldChildCount; i++) {
+            if (parentDom.childNodes[index]) {
+                parentDom.removeChild(parentDom.childNodes[index]);
+            }
+        }
+
+        // Insert the new element
+        diff(parentDom, null, newVNode, index);
+        return;
+    }
+
     // Case 2: New node but no old node (append)
     if (!oldVNode) {
         parentDom.appendChild(createElement(newVNode));
@@ -60,15 +96,16 @@ function diffChildren(parentDom, oldChildren, newChildren) {
         return;
     }
 
+    // Expand fragments for diffing
+    oldChildren = expandFragmentChildren(oldChildren.map(child => resolveComponentNode(child)));
+    newChildren = expandFragmentChildren(newChildren.map(child => resolveComponentNode(child)));
+
     if (oldChildren.length === 0) {
         newChildren.forEach(child => {
             parentDom.appendChild(createElement(child));
         });
         return;
     }
-
-    oldChildren = oldChildren.map(child => resolveComponentNode(child));
-    newChildren = newChildren.map(child => resolveComponentNode(child));
 
     // Check if we need to handle keys
     const hasKeys = oldChildren.some(c => c?.attrs?.key) ||
@@ -138,6 +175,20 @@ function diffChildren(parentDom, oldChildren, newChildren) {
         }
     });
 }
+
+// Expand fragment children for keyed diffing
+const expandFragmentChildren = (children) => {
+    const result = [];
+    children.forEach(child => {
+        child = resolveComponentNode(child);
+        if (child?.tag === 'fragment') {
+            result.push(...expandFragmentChildren(child.children || []));
+        } else {
+            result.push(child);
+        }
+    });
+    return result;
+};
 
 // The rest of the helper functions remain unchanged
 function resolveComponentNode(vnode) {
