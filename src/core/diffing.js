@@ -82,71 +82,61 @@ function diffChildren(parentDom, oldChildren, newChildren) {
         return;
     }
 
-    // Create a map of keyed old children
-    const oldKeyedMap = new Map();
-    const oldChildDomNodes = Array.from(parentDom.childNodes);
+    // Create a map of the existing keyed nodes for quick lookup
+    const keysOldDom = new Map();
+    const currentDomNodes = Array.from(parentDom.childNodes);
 
-    for (let i = 0; i < oldChildren.length; i++) {
-        const key = oldChildren[i]?.attrs?.key;
-        if (key !== undefined && i < oldChildDomNodes.length) {
-            oldKeyedMap.set(key, {
-                vnode: oldChildren[i],
-                domNode: oldChildDomNodes[i],
-                index: i
+    // Map keys to their corresponding old vnodes and DOM nodes
+    oldChildren.forEach((child, i) => {
+        const key = child?.attrs?.key;
+        if (key && i < currentDomNodes.length) {
+            keysOldDom.set(key, {
+                vnode: child,
+                dom: currentDomNodes[i]
             });
         }
-    }
+    });
 
-    // Track used DOM nodes to determine which ones to remove later
+    // Track which DOM nodes we've used
     const usedNodes = new Set();
-
-    // Process new children in the order they are defined
     let currentIndex = 0;
 
-    for (let i = 0; i < newChildren.length; i++) {
-        const newChild = newChildren[i];
+    // Process each new child in order
+    newChildren.forEach(newChild => {
         const key = newChild?.attrs?.key;
+        const oldChild = key && keysOldDom.get(key);
 
-        // If this child has a key and we have a matching old node
-        if (key !== undefined && oldKeyedMap.has(key)) {
-            const { vnode: oldChild, domNode: oldDomNode } = oldKeyedMap.get(key);
+        if (oldChild) {
+            // Update and reposition existing node
+            const { vnode: oldVNode, dom: oldDom } = oldChild;
 
-            // Mark this node as used
-            usedNodes.add(oldDomNode);
+            // Mark as used
+            usedNodes.add(oldDom);
 
-            // Update the node
-            updateAttributes(oldDomNode, oldChild.attrs, newChild.attrs);
+            // Update the node and its children
+            updateAttributes(oldDom, oldVNode.attrs, newChild.attrs);
+            diffChildren(oldDom, oldVNode.children || [], newChild.children || []);
 
-            // Recursively update children
-            diffChildren(oldDomNode, oldChild.children || [], newChild.children || []);
-
-            // Move this node to the current position if needed
-            const currentDomNode = parentDom.childNodes[currentIndex];
-            if (currentDomNode !== oldDomNode) {
-                parentDom.insertBefore(oldDomNode, currentDomNode || null);
+            // Move if needed (to maintain order)
+            const currentPosition = parentDom.childNodes[currentIndex];
+            if (currentPosition !== oldDom) {
+                parentDom.insertBefore(oldDom, currentPosition || null);
             }
-        }
-        // No key or no matching old node, create a new one
-        else {
-            const newDomNode = createElement(newChild);
-
-            // Insert at the current position
-            if (currentIndex < parentDom.childNodes.length) {
-                parentDom.insertBefore(newDomNode, parentDom.childNodes[currentIndex]);
-            } else {
-                parentDom.appendChild(newDomNode);
-            }
+        } else {
+            // Create and insert new node
+            const newDom = createElement(newChild);
+            parentDom.insertBefore(newDom, parentDom.childNodes[currentIndex] || null);
         }
 
         currentIndex++;
-    }
+    });
 
-    // Remove any unused DOM nodes
-    for (const domNode of oldChildDomNodes) {
+    // Remove any unused nodes
+    currentDomNodes.forEach(domNode => {
         if (!usedNodes.has(domNode) && domNode.parentNode === parentDom) {
             parentDom.removeChild(domNode);
         }
-    }
+    });
 }
 
 // The rest of the helper functions remain unchanged
