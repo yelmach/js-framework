@@ -12,49 +12,45 @@ function diff(parentDom, oldVNode, newVNode, index = 0) {
     }
 
     // Resolve component nodes before diffing
-    const oldNode = oldVNode ? resolveComponentNode(oldVNode) : null;
-    const newNode = resolveComponentNode(newVNode);
+    oldVNode = oldVNode ? resolveComponentNode(oldVNode) : null;
+    newVNode = resolveComponentNode(newVNode);
 
     // Case 2: New node but no old node (append)
-    if (!oldNode) {
-        parentDom.appendChild(createElement(newNode));
+    if (!oldVNode) {
+        parentDom.appendChild(createElement(newVNode));
         return;
     }
 
     const domNode = parentDom.childNodes[index];
     if (!domNode) {
-        parentDom.appendChild(createElement(newNode));
+        parentDom.appendChild(createElement(newVNode));
         return;
     }
 
     // Case 3: Both nodes are text nodes
-    if (isTextNode(oldNode) && isTextNode(newNode)) {
-        if (oldNode !== newNode) {
-            domNode.nodeValue = newNode.toString();
+    if (isTextNode(oldVNode) && isTextNode(newVNode)) {
+        if (oldVNode !== newVNode) {
+            domNode.nodeValue = newVNode.toString();
         }
         return;
     }
 
     // Case 4: Different node types (replace)
-    if (!isSameNodeType(oldNode, newNode) || !hasSameKey(oldNode, newNode)) {
-        const newDomNode = createElement(newNode);
+    if (!isSameNodeType(oldVNode, newVNode)) {
+        const newDomNode = createElement(newVNode);
         parentDom.replaceChild(newDomNode, domNode);
         return;
     }
 
     // Case 5: Same element type - update attributes and children
-    updateAttributes(domNode, oldNode.attrs, newNode.attrs);
-
-    // Handle children
-    const oldChildren = oldNode.children || [];
-    const newChildren = newNode.children || [];
+    updateAttributes(domNode, oldVNode.attrs, newVNode.attrs);
 
     // Use improved diffChildren function
-    diffChildren(domNode, oldChildren, newChildren);
+    diffChildren(domNode, oldVNode.children || [], newVNode.children || []);
 }
 
 function diffChildren(parentDom, oldChildren, newChildren) {
-    // Special cases: empty arrays
+    // empty arrays
     if (oldChildren.length === 0 && newChildren.length === 0) {
         return;
     }
@@ -70,6 +66,9 @@ function diffChildren(parentDom, oldChildren, newChildren) {
         });
         return;
     }
+
+    oldChildren = oldChildren.map(child => resolveComponentNode(child));
+    newChildren = newChildren.map(child => resolveComponentNode(child));
 
     // Check if we need to handle keys
     const hasKeys = oldChildren.some(c => c?.attrs?.key) ||
@@ -155,7 +154,16 @@ function resolveComponentNode(vnode) {
     if (!vnode) return null;
 
     if (vnode.component) {
-        return vnode.component(vnode.props || {})
+        const result = vnode.component(vnode.props || {});
+
+        // Preserve the key from component props if the result doesn't have one
+        if (vnode.props && vnode.props.key && result && result.attrs) {
+            if (!result.attrs.key) {
+                result.attrs.key = vnode.props.key;
+            }
+        }
+
+        return result;
     }
     return vnode;
 }
@@ -181,24 +189,6 @@ function isSameNodeType(node1, node2) {
 
     // Compare tag names for regular elements
     return node1.tag === node2.tag;
-}
-
-// Helper to check if nodes have the same key
-function hasSameKey(node1, node2) {
-    // If both nodes don't have a key attribute, they're considered the same key (null key)
-    if ((!node1 || !node1.attrs || !node1.attrs.key) &&
-        (!node2 || !node2.attrs || !node2.attrs.key)) {
-        return true;
-    }
-
-    // If one has a key and the other doesn't, they're different
-    if ((!node1 || !node1.attrs || !node1.attrs.key) ||
-        (!node2 || !node2.attrs || !node2.attrs.key)) {
-        return false;
-    }
-
-    // Otherwise compare the keys
-    return node1.attrs.key === node2.attrs.key;
 }
 
 // Update only the attributes that changed
