@@ -1,6 +1,6 @@
-export function TodoList({ todos, filteredTodos, toggleTodo, toggleAll, deleteTodo, editTodo }) {
+export function TodoList({ todos, filteredTodos, toggleTodo, toggleAll, deleteTodo, editTodo, toggleEditing }) {
     const allCompleted = filteredTodos.length > 0 && filteredTodos.every(todo => todo.completed);
-    
+
     return {
         tag: 'main',
         attrs: {
@@ -49,7 +49,8 @@ export function TodoList({ todos, filteredTodos, toggleTodo, toggleAll, deleteTo
                         todo,
                         toggleTodo,
                         deleteTodo,
-                        editTodo
+                        editTodo,
+                        toggleEditing
                     }
                 }))
             }
@@ -57,13 +58,15 @@ export function TodoList({ todos, filteredTodos, toggleTodo, toggleAll, deleteTo
     };
 }
 
-function TodoItem({ todo, toggleTodo, deleteTodo, editTodo }) {
+function TodoItem({ todo, toggleTodo, deleteTodo, editTodo, toggleEditing }) {
+    let isSubmitting = false;
+
     const handleToggle = () => {
         toggleTodo(todo.id);
     };
 
     const handleDoubleClick = () => {
-        editTodo(todo.id, todo.text, true);
+        toggleEditing(todo.id, true);
         setTimeout(() => {
             const input = document.querySelector('[data-testid="todo-item-edit-input"]');
             if (input) input.focus();
@@ -75,14 +78,19 @@ function TodoItem({ todo, toggleTodo, deleteTodo, editTodo }) {
     };
 
     const handleBlur = () => {
-        editTodo(todo.id, todo.text, false);
+        if (isSubmitting) return;
+        toggleEditing(todo.id, false);
     }
 
     const handleEdit = (e) => {
         if (e.key === "Enter") {
-            const value = e.target.value.trim();            
+            const value = e.target.value.trim();
             if (value.length > 2) {
+                isSubmitting = true;
                 editTodo(todo.id, value, false);
+                setTimeout(() => {
+                    isSubmitting = false;
+                }, 0);
             }
         }
     };
@@ -116,8 +124,8 @@ function TodoItem({ todo, toggleTodo, deleteTodo, editTodo }) {
                                     autofocus: true,
                                     placeHolder: 'Edit todo',
                                     defaultValue: todo.text,
-                                    onBlur: handleBlur,
                                     onKeyDown: handleEdit,
+                                    onBlur: handleBlur,
                                 },
                                 children: []
                             },

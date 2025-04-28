@@ -66,6 +66,15 @@ function TodoApp() {
         setTodos(todos.filter(todo => todo.id !== id));
     };
 
+    const handleToggleEditing = (id, editing) => {
+        setTodos(todos.map(todo => {
+            if (todo.id === id) {
+                return { ...todo, editing };
+            }
+            return todo;
+        }));
+    };
+
     const handleEditTodo = (id, text, editing = false) => {
         // First, make sure only one todo is in edit mode at a time
         setTodos(todos.map(todo => {
@@ -117,7 +126,8 @@ function TodoApp() {
                             toggleTodo: handleToggle,
                             toggleAll: handleToggleAll,
                             deleteTodo: handleDeleteTodo,
-                            editTodo: handleEditTodo
+                            editTodo: handleEditTodo,
+                            toggleEditing: handleToggleEditing
                         }
                     } : null,
                     todos.length > 0 ? {
