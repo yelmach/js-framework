@@ -86,6 +86,10 @@ function diff(parentDom, oldVNode, newVNode, index = 0) {
 }
 
 function diffChildren(parentDom, oldChildren, newChildren) {
+    // Filter out falsy values (null, undefined, false) to handle conditional rendering correctly
+    oldChildren = oldChildren.filter(child => child !== null && child !== undefined && child !== false);
+    newChildren = newChildren.filter(child => child !== null && child !== undefined && child !== false);
+
     // empty arrays
     if (oldChildren.length === 0 && newChildren.length === 0) {
         return;
@@ -113,8 +117,18 @@ function diffChildren(parentDom, oldChildren, newChildren) {
 
     // Simple case: no keys, diff by index
     if (!hasKeys) {
+        let indexOffset = 0;
+
         for (let i = 0; i < Math.max(oldChildren.length, newChildren.length); i++) {
-            diff(parentDom, oldChildren[i], newChildren[i], i);
+            // Use adjusted index that accounts for previously removed elements
+            const currentDomIndex = i - indexOffset;
+
+            // If we're removing an element, increment the offset
+            if (oldChildren[i] && !newChildren[i]) {
+                indexOffset++;
+            }
+
+            diff(parentDom, oldChildren[i], newChildren[i], currentDomIndex);
         }
         return;
     }
@@ -179,11 +193,15 @@ function diffChildren(parentDom, oldChildren, newChildren) {
 // Expand fragment children for keyed diffing
 const expandFragmentChildren = (children) => {
     const result = [];
+
+    // Filter out falsy values before processing
+    children = children.filter(child => child !== null && child !== undefined && child !== false);
+
     children.forEach(child => {
         child = resolveComponentNode(child);
         if (child?.tag === 'fragment') {
             result.push(...expandFragmentChildren(child.children || []));
-        } else {
+        } else if (child !== null && child !== undefined && child !== false) {
             result.push(child);
         }
     });
