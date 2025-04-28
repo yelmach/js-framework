@@ -20,6 +20,8 @@ function TodoApp() {
         const handleHashChange = () => {
             const hash = window.location.hash.replace('#/', '') || FILTERS.ALL;
             if (Object.values(FILTERS).includes(hash)) {
+                console.log(`Hash changed to: ${hash}`);
+                
                 setFilter(hash);
             }
         };
@@ -101,7 +103,7 @@ function TodoApp() {
                             addTodo: handleAddTodo
                         }
                     },
-                    todos.length > 0 ? {
+                    filteredTodos.length > 0 ? {
                         component: TodoList,
                         props: {
                             todos,

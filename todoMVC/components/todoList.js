@@ -32,7 +32,7 @@ export function TodoList({ todos, filteredTodos, toggleTodo, toggleAll, deleteTo
                         tag: 'label',
                         attrs: {
                             class: 'toggle-all-label',
-                            for: 'toggle-all'
+                            htmlFor: 'toggle-all'
                         },
                         children: ['Toggle All Input']
                     }
@@ -54,24 +54,6 @@ export function TodoList({ todos, filteredTodos, toggleTodo, toggleAll, deleteTo
                         editTodo
                     }
                 }))
-            },
-            {
-                tag: 'input',
-                attrs: {
-                    id: 'toggle-all',
-                    class: 'toggle-all',
-                    type: 'checkbox',
-                    checked: allCompleted,
-                    onChange: (e) => toggleAll(e.target.checked)
-                },
-                children: []
-            },
-            {
-                tag: 'label',
-                attrs: {
-                    for: 'toggle-all'
-                },
-                children: ['Mark all as complete']
             }
         ]
     };
@@ -105,6 +87,11 @@ function TodoItem({ todo, toggleTodo, deleteTodo, editTodo }) {
             const value = e.target.value.trim();
             if (value.length > 2) {
                 editTodo(todo.id, value);
+                if (isEditMode) {
+                    e.target.blur();
+                } else {
+                    e.target.value = '';
+                }
             }
         }
     };
@@ -138,7 +125,6 @@ function TodoItem({ todo, toggleTodo, deleteTodo, editTodo }) {
                                     autoFocus: true,
                                     placeHolder: 'Edit todo',
                                     defaultValue: todo.text,
-                                    value: todo.text,
                                     onBlur: handleBlur,
                                     onKeyDown: handleEdit,
                                 },
@@ -148,7 +134,7 @@ function TodoItem({ todo, toggleTodo, deleteTodo, editTodo }) {
                                 tag: 'label',
                                 attrs: {
                                     class: 'visually-hidden',
-                                    for: 'todo-edit-input'
+                                    htmlFor: 'todo-input'
                                 },
                                 children: ['Edit Todo Input']
                             }
