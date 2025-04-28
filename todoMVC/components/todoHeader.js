@@ -34,7 +34,7 @@ export function TodoHeader({ addTodo }) {
                             id: 'todo-input',
                             type: 'text',
                             'data-testid': 'text-input',
-                            autoFocus: true,
+                            autofocus: true,
                             placeholder: 'What needs to be done?',
                             onkeydown: handleSubmit,
                         },

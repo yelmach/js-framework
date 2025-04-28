@@ -47,7 +47,8 @@ function TodoApp() {
         setTodos([...todos, {
             id: generateId(),
             text,
-            completed: false
+            completed: false,
+            editing: false
         }]);
     };
 
@@ -65,10 +66,15 @@ function TodoApp() {
         setTodos(todos.filter(todo => todo.id !== id));
     };
 
-    const handleEditTodo = (id, text) => {
-        setTodos(todos.map(todo => 
-            todo.id === id ? { ...todo, text } : todo
-        ));
+    const handleEditTodo = (id, text, editing = false) => {
+        // First, make sure only one todo is in edit mode at a time
+        setTodos(todos.map(todo => {
+            if (todo.id === id) {
+                return { ...todo, text, editing };
+            }
+            // Ensure other todos are not in edit mode
+            return { ...todo, editing: false };
+        }));
     };
 
     const handleClearCompleted = () => {

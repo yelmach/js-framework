@@ -1,8 +1,6 @@
-import { useState } from '../../src/index.js';
-
 export function TodoList({ todos, filteredTodos, toggleTodo, toggleAll, deleteTodo, editTodo }) {
     const allCompleted = filteredTodos.length > 0 && filteredTodos.every(todo => todo.completed);
-
+    
     return {
         tag: 'main',
         attrs: {
@@ -60,14 +58,12 @@ export function TodoList({ todos, filteredTodos, toggleTodo, toggleAll, deleteTo
 }
 
 function TodoItem({ todo, toggleTodo, deleteTodo, editTodo }) {
-    const [isEditMode, setIsEditMode] = useState(false)
-
     const handleToggle = () => {
         toggleTodo(todo.id);
     };
 
     const handleDoubleClick = () => {
-        setIsEditMode(true);
+        editTodo(todo.id, todo.text, true);
         setTimeout(() => {
             const input = document.querySelector('[data-testid="todo-item-edit-input"]');
             if (input) input.focus();
@@ -79,19 +75,14 @@ function TodoItem({ todo, toggleTodo, deleteTodo, editTodo }) {
     };
 
     const handleBlur = () => {
-        if (isEditMode) setIsEditMode(false);
+        editTodo(todo.id, todo.text, false);
     }
 
     const handleEdit = (e) => {
         if (e.key === "Enter") {
-            const value = e.target.value.trim();
+            const value = e.target.value.trim();            
             if (value.length > 2) {
-                editTodo(todo.id, value);
-                if (isEditMode) {
-                    e.target.blur();
-                } else {
-                    e.target.value = '';
-                }
+                editTodo(todo.id, value, false);
             }
         }
     };
@@ -108,7 +99,7 @@ function TodoItem({ todo, toggleTodo, deleteTodo, editTodo }) {
                 attrs: {
                     class: 'view'
                 },
-                children: isEditMode ? [
+                children: todo.editing ? [
                     {
                         tag: 'div',
                         attrs: {
@@ -122,7 +113,7 @@ function TodoItem({ todo, toggleTodo, deleteTodo, editTodo }) {
                                     id: 'todo-edit-input',
                                     type: 'text',
                                     "data-testid": "todo-item-edit-input",
-                                    autoFocus: true,
+                                    autofocus: true,
                                     placeHolder: 'Edit todo',
                                     defaultValue: todo.text,
                                     onBlur: handleBlur,
